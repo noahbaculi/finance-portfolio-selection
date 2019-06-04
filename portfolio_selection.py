@@ -5,9 +5,10 @@ import pandas as pd
 # install requests-html
 
 # create symbols list with all securities to be considered
-symbols_list = ["KO", "SYG", "MUB", "DIS", "V", "JPM", "MSFT", "AAPL"]
+symbols_list = ["KO", "SYG", "MUB", "MSEGX", "DIS", "V", "JPM", "MSFT", "AAPL"]
 
 df = pd.DataFrame()
+# TODO change dataframe display settings
 
 df["Symbol"] = symbols_list
 
@@ -19,15 +20,36 @@ for security_index in range(len(symbols_list)):
     soup = BeautifulSoup(page.content, "html.parser")
     # print(soup.prettify())  # to examine imported HTML
 
-    try:  # see if security is a fund, otherwise assume company
+    # see if security is a fund, otherwise assume company
+    try:
         fund_overview = soup.find_all("div", {"class": "Mb(25px)"})[0].find("h3").text.strip()  # look for fund overview section
         if fund_overview == "Fund Overview":
             security_name = soup.find_all("div", {"class": "Mb(20px)"})[0].find("h3").text.strip()
+            info_block = soup.find_all("div", {"class": "Bdbw(1px) Bdbc($screenerBorderGray) Bdbs(s) H(25px) Pt(10px)"})
+            try:  # see if security is a special type of fund
+                if info_block[5].find("span", {"class": "Fl(start)"}).text.strip() == "Legal Type":
+                    security_type = info_block[5].find("span", {"class": "Fl(end)"}).text.strip()
+                else:
+                    security_type = "Fund..?"
+            except:
+                raise NameError("An unknown error occured with the type of a fund security.")
+            # TODO attain fund category
+
             print("Success - Fund - %s" % symbols_list[security_index])
+            print("Success - Fund Type - %s" % security_type)
+        else:
+            print("%s had a Yahoo Finance Profile page that could not be analyzed to find a fund overview section." % symbols_list[security_index])
     except AttributeError:
         security_name = soup.find_all("div", {"class": "qsp-2col-profile Mt(10px) smartphone_Mt(20px) Lh(1.7)"})[0].find("h3").text.strip()
+        security_type = "Company"
+
         print("Success - Company - %s" % symbols_list[security_index])
+        print("Success - Company Type - %s" % security_type)
+        # TODO attain company category
+
     df.at[security_index, "Security"] = security_name  # assign name to dataframe
+    df.at[security_index, "Type"] = security_type  # assign type to dataframe
+    # TODO add security category to dataframe
     print()
 
 print(df)  # print out dataframe
