@@ -8,7 +8,9 @@ import pandas as pd
 symbols_list = ["KO", "SYG", "MUB", "MSEGX", "DIS", "V", "JPM", "MSFT", "AAPL"]
 
 df = pd.DataFrame()
-# TODO change dataframe display settings
+pd.set_option("display.max_rows", 16)
+pd.set_option("display.max_columns", 10)
+pd.set_option("display.width", 200)
 
 df["Symbol"] = symbols_list
 
