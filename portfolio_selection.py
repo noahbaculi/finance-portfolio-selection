@@ -1,6 +1,5 @@
-import requests
 from bs4 import BeautifulSoup
-import pandas as pd
+from yahoo_fin.stock_info import *
 
 # install requests
 # install requests-html
@@ -8,7 +7,7 @@ import pandas as pd
 # create symbols list with all securities to be considered
 symbols_list = ["KO", "SYG", "MUB", "MSEGX", "DBA", "DIS", "V", "JPM", "MSFT", "AAPL"]
 
-df = pd.DataFrame(columns=["Symbol", "Security", "Type", "Category"])
+df = pd.DataFrame(columns=["Symbol", "Security", "Type", "Category", "Price"])
 pd.set_option("display.max_rows", 16)
 pd.set_option("display.max_columns", 10)
 pd.set_option("display.width", 200)
@@ -77,7 +76,8 @@ for security_index in range(len(symbols_list)):
 
     df.at[security_index, "Security"] = security_name  # assign name to dataframe
     df.at[security_index, "Type"] = security_type  # assign type to dataframe
-    df.at[security_index, "Category"] = security_category  # category name to dataframe
+    df.at[security_index, "Category"] = security_category  # assign category name to dataframe
+    df.at[security_index, "Price"] = "%.2f" % (get_live_price(symbols_list[security_index]))  # get and assign price to dataframe
     print()
 
 print(df)  # print out dataframe
