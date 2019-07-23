@@ -5,7 +5,7 @@ from yahoo_fin.stock_info import *
 # install requests-html
 
 # create symbols list with all securities to be considered
-symbols_list = ["KO", "SYG", "MUB", "MSEGX", "DBA", "DIS", "V", "JPM", "MSFT", "AAPL"]
+symbols_list = ["KO", "SPY", "MUB", "MSEGX", "DBA", "DIS", "V", "JPM", "MSFT", "AAPL"]
 
 df = pd.DataFrame(columns=["Symbol", "Security", "Type", "Category", "Price"])
 pd.set_option("display.max_rows", 16)
@@ -73,6 +73,10 @@ for security_index in range(len(symbols_list)):
                     print("The 52-Week Change parameter at %s is not in the expected location." % url_stats)
             except IndexError:
                 pass
+
+        # add Trailing P/E parameter
+        if soup_stats.find_all("span", {"data-reactid": "29"})[1].text.strip() == "Trailing P/E":
+            df.at[security_index, "Trailing P/E"] = soup_stats.find_all("td", {"class": "Fz(s) Fw(500) Ta(end)"})[2].text.strip()
 
     df.at[security_index, "Security"] = security_name  # assign name to dataframe
     df.at[security_index, "Type"] = security_type  # assign type to dataframe
