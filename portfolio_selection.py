@@ -1,6 +1,5 @@
 from bs4 import BeautifulSoup
 from yahoo_fin.stock_info import *
-
 # install requests
 # install requests-html
 
@@ -37,6 +36,8 @@ for security_index in range(len(symbols_list)):
                 raise SystemExit("An unknown error occured with the type of a fund security.")
             security_category = info_block[0].find("span", {"class": "Fl(end)"}).text.strip()
             df.at[security_index, "52-Week Change"] = "-"
+            df.at[security_index, "Trailing P/E"] = "-"
+            df.at[security_index, "Operating Margin"] = "-"
 
             print("Success - Fund - %s" % symbols_list[security_index])
             print("Success - Fund Type - %s" % security_type)
@@ -58,7 +59,7 @@ for security_index in range(len(symbols_list)):
         soup_stats = BeautifulSoup(page_stats.content, "html.parser")
         # print(soup_stats.prettify())  # to examine imported profile HTML
 
-        # examine 2 locations for 52 week change parameter
+        # examine 2 locations for 52 Week Change parameter
         try:
             if soup_stats.find_all("span", {"data-reactid": "287"})[0].text.strip() == "52-Week Change":
                 df.at[security_index, "52-Week Change"] = soup_stats.find_all("td", {"class": "Fz(s) Fw(500) Ta(end)"})[
@@ -78,10 +79,27 @@ for security_index in range(len(symbols_list)):
         if soup_stats.find_all("span", {"data-reactid": "29"})[1].text.strip() == "Trailing P/E":
             df.at[security_index, "Trailing P/E"] = soup_stats.find_all("td", {"class": "Fz(s) Fw(500) Ta(end)"})[2].text.strip()
 
+
+        # add Operating Margin parameter
+        try:
+            if soup_stats.find_all("span", {"data-reactid": "115"})[0].text.strip() == "Operating Margin":
+                df.at[security_index, "Operating Margin"] = soup_stats.find_all("td", {"class": "Fz(s) Fw(500) Ta(end)", "data-reactid": "119"})[0].text.strip()
+            else:
+                print("The Operating Margin parameter at %s is not in the expected location." % url_stats)
+        except IndexError:
+            try:
+                if soup_stats.find_all("span", {"data-reactid": "116"})[0].text.strip() == "Operating Margin":
+                    df.at[security_index, "Operating Margin"] = soup_stats.find_all("td", {"class": "Fz(s) Fw(500) Ta(end)", "data-reactid": "120"})[0].text.strip()
+                else:
+                    print("The Operating Margin parameter at %s is not in the expected location." % url_stats)
+            except IndexError:
+                pass
+
+
     df.at[security_index, "Security"] = security_name  # assign name to dataframe
     df.at[security_index, "Type"] = security_type  # assign type to dataframe
     df.at[security_index, "Category"] = security_category  # assign category name to dataframe
     df.at[security_index, "Price"] = "%.2f" % (get_live_price(symbols_list[security_index]))  # get and assign price to dataframe
     print()
 
-print(df)  # print out dataframe
+print(df)  # print dataframe
