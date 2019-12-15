@@ -1,5 +1,6 @@
 from bs4 import BeautifulSoup
 from yahoo_fin.stock_info import *
+
 # install requests
 # install requests-html
 
@@ -23,10 +24,12 @@ for security_index in range(len(symbols_list)):
 
     # see if security is a fund, otherwise assume company
     try:  # FUND
-        fund_overview = soup_profile.find_all("div", {"class": "Mb(25px)"})[0].find("h3").text.strip()  # look for fund overview section
+        fund_overview = soup_profile.find_all("div", {"class": "Mb(25px)"})[0].find(
+            "h3").text.strip()  # look for fund overview section
         if fund_overview == "Fund Overview":
             security_name = soup_profile.find_all("div", {"class": "Mb(20px)"})[0].find("h3").text.strip()
-            info_block = soup_profile.find_all("div", {"class": "Bdbw(1px) Bdbc($screenerBorderGray) Bdbs(s) H(25px) Pt(10px)"})
+            info_block = soup_profile.find_all("div", {
+                "class": "Bdbw(1px) Bdbc($screenerBorderGray) Bdbs(s) H(25px) Pt(10px)"})
             try:  # see if security is a special type of fund
                 if info_block[5].find("span", {"class": "Fl(start)"}).text.strip() == "Legal Type":
                     security_type = info_block[5].find("span", {"class": "Fl(end)"}).text.strip()
@@ -38,15 +41,19 @@ for security_index in range(len(symbols_list)):
             df.at[security_index, "52-Week Change"] = "-"
             df.at[security_index, "Trailing P/E"] = "-"
             df.at[security_index, "Operating Margin"] = "-"
+            df.at[security_index, "Quarterly Earnings Growth"] = "-"
 
             print("Success - Fund - %s" % symbols_list[security_index])
             print("Success - Fund Type - %s" % security_type)
             print("Success - Fund Cat - %s" % security_category)
         else:
-            print("%s had a Yahoo Finance Profile page that could not be analyzed to find a fund overview section." % symbols_list[security_index])
+            print("%s had a Yahoo Finance Profile page that could not be analyzed to find a fund overview section." %
+                  symbols_list[security_index])
 
     except AttributeError:  # COMPANY
-        security_name = soup_profile.find_all("div", {"class": "qsp-2col-profile Mt(10px) smartphone_Mt(20px) Lh(1.7)"})[0].find("h3").text.strip()
+        security_name = \
+        soup_profile.find_all("div", {"class": "qsp-2col-profile Mt(10px) smartphone_Mt(20px) Lh(1.7)"})[0].find(
+            "h3").text.strip()
         security_type = "Company"
         security_category = soup_profile.find_all("span", {"class": "Fw(600)"})[0].text.strip()
         print("Success - Company - %s" % symbols_list[security_index])
@@ -54,7 +61,8 @@ for security_index in range(len(symbols_list)):
         print("Success - Company Cat - %s" % security_category)
 
         # scrape Yahoo finance security statics page
-        url_stats = "https://finance.yahoo.com/quote/%s/key-statistics?p=%s" % (symbols_list[security_index], symbols_list[security_index])
+        url_stats = "https://finance.yahoo.com/quote/%s/key-statistics?p=%s" % (
+        symbols_list[security_index], symbols_list[security_index])
         page_stats = requests.get(url_stats)
         soup_stats = BeautifulSoup(page_stats.content, "html.parser")
         # print(soup_stats.prettify())  # to examine imported profile HTML
@@ -69,7 +77,8 @@ for security_index in range(len(symbols_list)):
         except IndexError:
             try:
                 if soup_stats.find_all("span", {"data-reactid": "292"})[0].text.strip() == "52-Week Change":
-                    df.at[security_index, "52-Week Change"] = soup_stats.find_all("td", {"class": "Fz(s) Fw(500) Ta(end)"})[32].text.strip()
+                    df.at[security_index, "52-Week Change"] = \
+                    soup_stats.find_all("td", {"class": "Fz(s) Fw(500) Ta(end)"})[32].text.strip()
                 else:
                     print("The 52-Week Change parameter at %s is not in the expected location." % url_stats)
             except IndexError:
@@ -77,29 +86,46 @@ for security_index in range(len(symbols_list)):
 
         # add Trailing P/E parameter
         if soup_stats.find_all("span", {"data-reactid": "29"})[1].text.strip() == "Trailing P/E":
-            df.at[security_index, "Trailing P/E"] = soup_stats.find_all("td", {"class": "Fz(s) Fw(500) Ta(end)"})[2].text.strip()
-
+            df.at[security_index, "Trailing P/E"] = soup_stats.find_all("td", {"class": "Fz(s) Fw(500) Ta(end)"})[
+                2].text.strip()
 
         # add Operating Margin parameter
         try:
             if soup_stats.find_all("span", {"data-reactid": "115"})[0].text.strip() == "Operating Margin":
-                df.at[security_index, "Operating Margin"] = soup_stats.find_all("td", {"class": "Fz(s) Fw(500) Ta(end)", "data-reactid": "119"})[0].text.strip()
+                df.at[security_index, "Operating Margin"] = \
+                soup_stats.find_all("td", {"class": "Fz(s) Fw(500) Ta(end)", "data-reactid": "119"})[0].text.strip()
             else:
                 print("The Operating Margin parameter at %s is not in the expected location." % url_stats)
         except IndexError:
             try:
                 if soup_stats.find_all("span", {"data-reactid": "116"})[0].text.strip() == "Operating Margin":
-                    df.at[security_index, "Operating Margin"] = soup_stats.find_all("td", {"class": "Fz(s) Fw(500) Ta(end)", "data-reactid": "120"})[0].text.strip()
+                    df.at[security_index, "Operating Margin"] = \
+                    soup_stats.find_all("td", {"class": "Fz(s) Fw(500) Ta(end)", "data-reactid": "120"})[0].text.strip()
                 else:
                     print("The Operating Margin parameter at %s is not in the expected location." % url_stats)
             except IndexError:
                 pass
 
+        # add Quarterly Earnings Growth parameter
+        try:
+            if soup_stats.find_all("span", {"data-reactid": "195"})[0].text.strip() == "Quarterly Earnings Growth":
+                df.at[security_index, "Quarterly Earnings Growth"] = soup_stats.find_all("td", {"class": "Fz(s) Fw(500) Ta(end)", "data-reactid": "199"})[0].text.strip()
+            else:
+                print("The Quarterly Earnings Growth parameter at %s is not in the expected location." % url_stats)
+        except IndexError:
+            try:
+                if soup_stats.find_all("span", {"data-reactid": "197"})[0].text.strip() == "Quarterly Earnings Growth":
+                    df.at[security_index, "Quarterly Earnings Growth"] = soup_stats.find_all("td", {"class": "Fz(s) Fw(500) Ta(end)", "data-reactid": "201"})[0].text.strip()
+                else:
+                    print("The Quarterly Earnings Growth parameter at %s is not in the expected location." % url_stats)
+            except IndexError:
+                pass
 
     df.at[security_index, "Security"] = security_name  # assign name to dataframe
     df.at[security_index, "Type"] = security_type  # assign type to dataframe
     df.at[security_index, "Category"] = security_category  # assign category name to dataframe
-    df.at[security_index, "Price"] = "%.2f" % (get_live_price(symbols_list[security_index]))  # get and assign price to dataframe
+    df.at[security_index, "Price"] = "%.2f" % (
+        get_live_price(symbols_list[security_index]))  # get and assign price to dataframe
     print()
 
 print(df)  # print dataframe
