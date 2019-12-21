@@ -6,18 +6,20 @@ from yahoo_fin.stock_info import *
 
 # create symbols list with all securities to be considered
 symbols_list = ["KO", "SPY", "MUB", "MSEGX", "DBA", "DIS", "V", "JPM", "MSFT", "AAPL"]
+# symbols_list = ["JPM"]
 
 df = pd.DataFrame(columns=["Symbol", "Security", "Type", "Category", "Price"])
 pd.set_option("display.max_rows", 16)
-pd.set_option("display.max_columns", 10)
-pd.set_option("display.width", 200)
+pd.set_option("display.max_columns", 8)
+pd.set_option("display.width", 300)
 
 df["Symbol"] = symbols_list
 
 # loop through all securities
 for security_index in range(len(symbols_list)):
     # scrape Yahoo finance security profile page
-    url_profile = "https://finance.yahoo.com/quote/%s/profile?p=%s" % (symbols_list[security_index], symbols_list[security_index])
+    url_profile = "https://finance.yahoo.com/quote/%s/profile?p=%s" % (
+    symbols_list[security_index], symbols_list[security_index])
     page_profile = requests.get(url_profile)
     soup_profile = BeautifulSoup(page_profile.content, "html.parser")
     # print(soup_profile.prettify())  # to examine imported profile HTML
@@ -42,6 +44,7 @@ for security_index in range(len(symbols_list)):
             df.at[security_index, "Trailing P/E"] = "-"
             df.at[security_index, "Operating Margin"] = "-"
             df.at[security_index, "Quarterly Earnings Growth"] = "-"
+            df.at[security_index, "Beta (3Y Monthly)"] = "-"
 
             print("Success - Fund - %s" % symbols_list[security_index])
             print("Success - Fund Type - %s" % security_type)
@@ -120,6 +123,17 @@ for security_index in range(len(symbols_list)):
                     print("The Quarterly Earnings Growth parameter at %s is not in the expected location." % url_stats)
             except IndexError:
                 pass
+
+        # add Beta (3Y Monthly) parameter
+        try:
+            if soup_stats.find_all("span", {"data-reactid": "280"})[0].text.strip() == "Beta (3Y Monthly)":
+                df.at[security_index, "Beta (3Y Monthly)"] = soup_stats.find_all("td", {"class": "Fz(s) Fw(500) Ta(end)", "data-reactid": "284"})[0].text.strip()
+            elif soup_stats.find_all("span", {"data-reactid": "285"})[0].text.strip() == "Beta (3Y Monthly)":
+                df.at[security_index, "Beta (3Y Monthly)"] = soup_stats.find_all("td", {"class": "Fz(s) Fw(500) Ta(end)", "data-reactid": "289"})[0].text.strip()
+            else:
+                print("The Beta (3Y Monthly) parameter at %s is not in the expected location." % url_stats)
+        except IndexError:
+            print("The Beta (3Y Monthly) parameter at %s is not in the expected location." % url_stats)
 
     df.at[security_index, "Security"] = security_name  # assign name to dataframe
     df.at[security_index, "Type"] = security_type  # assign type to dataframe
