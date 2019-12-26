@@ -5,12 +5,11 @@ from yahoo_fin.stock_info import *
 # install requests-html
 
 # create symbols list with all securities to be considered
-symbols_list = ["KO", "SPY", "MUB", "MSEGX", "DBA", "DIS", "V", "JPM", "MSFT", "AAPL"]
-# symbols_list = ["JPM"]
+symbols_list = ["KO", "SPY", "VTI", "MUB", "MSEGX", "DBA", "DIS", "V", "JPM", "MSFT", "AAPL"]
 
 df = pd.DataFrame(columns=["Symbol", "Security", "Type", "Category", "Price"])
 pd.set_option("display.max_rows", 16)
-pd.set_option("display.max_columns", 8)
+pd.set_option("display.max_columns", 12)
 pd.set_option("display.width", 300)
 
 df["Symbol"] = symbols_list
@@ -18,8 +17,7 @@ df["Symbol"] = symbols_list
 # loop through all securities
 for security_index in range(len(symbols_list)):
     # scrape Yahoo finance security profile page
-    url_profile = "https://finance.yahoo.com/quote/%s/profile?p=%s" % (
-    symbols_list[security_index], symbols_list[security_index])
+    url_profile = "https://finance.yahoo.com/quote/%s/profile?p=%s" % (symbols_list[security_index], symbols_list[security_index])
     page_profile = requests.get(url_profile)
     soup_profile = BeautifulSoup(page_profile.content, "html.parser")
     # print(soup_profile.prettify())  # to examine imported profile HTML
@@ -44,7 +42,26 @@ for security_index in range(len(symbols_list)):
             df.at[security_index, "Trailing P/E"] = "-"
             df.at[security_index, "Operating Margin"] = "-"
             df.at[security_index, "Quarterly Earnings Growth"] = "-"
-            df.at[security_index, "Beta (3Y Monthly)"] = "-"
+
+            # scrape Yahoo finance security risk page
+            url_risk = "https://finance.yahoo.com/quote/%s/risk?p=%s" % (symbols_list[security_index], symbols_list[security_index])
+            page_risk = requests.get(url_risk)
+            soup_risk = BeautifulSoup(page_risk.content, "html.parser")
+            # print(soup_risk.prettify())  # to examine imported profile HTML
+
+            if soup_risk.find_all("span", {"data-reactid": "44"})[0].text.strip() == "Beta":
+                df.at[security_index, "Beta (3Y Monthly)"] = soup_risk.find_all("span", {"class": "W(39%) Fl(start)", "data-reactid": "46"})[0].text.strip()
+            elif soup_risk.find_all("span", {"data-reactid": "74"})[0].text.strip() == "Beta":
+                df.at[security_index, "Beta (3Y Monthly)"] = soup_risk.find_all("span", {"class": "W(39%) Fl(start)", "data-reactid": "76"})[0].text.strip()
+            else:
+                print("The Beta (3Y Monthly) parameter at %s is not in the expected location." % url_risk)
+
+            if soup_profile.find_all("span", {"data-reactid": "43"})[0].text.strip() == "YTD Return":
+                df.at[security_index, "YTD Return"] = soup_profile.find_all("span", {"class": "Fl(end)", "data-reactid": "44"})[0].text.strip()
+            elif soup_profile.find_all("span", {"data-reactid": "57"})[0].text.strip() == "YTD Return":
+                df.at[security_index, "YTD Return"] = soup_profile.find_all("span", {"class": "Fl(end)", "data-reactid": "58"})[0].text.strip()
+            else:
+                print("The YTD Return parameter at %s is not in the expected location." % url_profile)
 
             print("Success - Fund - %s" % symbols_list[security_index])
             print("Success - Fund Type - %s" % security_type)
@@ -54,9 +71,7 @@ for security_index in range(len(symbols_list)):
                   symbols_list[security_index])
 
     except AttributeError:  # COMPANY
-        security_name = \
-        soup_profile.find_all("div", {"class": "qsp-2col-profile Mt(10px) smartphone_Mt(20px) Lh(1.7)"})[0].find(
-            "h3").text.strip()
+        security_name = soup_profile.find_all("div", {"class": "qsp-2col-profile Mt(10px) smartphone_Mt(20px) Lh(1.7)"})[0].find("h3").text.strip()
         security_type = "Company"
         security_category = soup_profile.find_all("span", {"class": "Fw(600)"})[0].text.strip()
         print("Success - Company - %s" % symbols_list[security_index])
@@ -64,8 +79,7 @@ for security_index in range(len(symbols_list)):
         print("Success - Company Cat - %s" % security_category)
 
         # scrape Yahoo finance security statics page
-        url_stats = "https://finance.yahoo.com/quote/%s/key-statistics?p=%s" % (
-        symbols_list[security_index], symbols_list[security_index])
+        url_stats = "https://finance.yahoo.com/quote/%s/key-statistics?p=%s" % (symbols_list[security_index], symbols_list[security_index])
         page_stats = requests.get(url_stats)
         soup_stats = BeautifulSoup(page_stats.content, "html.parser")
         # print(soup_stats.prettify())  # to examine imported profile HTML
@@ -73,15 +87,13 @@ for security_index in range(len(symbols_list)):
         # examine 2 locations for 52 Week Change parameter
         try:
             if soup_stats.find_all("span", {"data-reactid": "287"})[0].text.strip() == "52-Week Change":
-                df.at[security_index, "52-Week Change"] = soup_stats.find_all("td", {"class": "Fz(s) Fw(500) Ta(end)"})[
-                    32].text.strip()
+                df.at[security_index, "52-Week Change"] = soup_stats.find_all("td", {"class": "Fz(s) Fw(500) Ta(end)"})[32].text.strip()
             else:
                 print("The 52-Week Change parameter at %s is not in the expected location." % url_stats)
         except IndexError:
             try:
                 if soup_stats.find_all("span", {"data-reactid": "292"})[0].text.strip() == "52-Week Change":
-                    df.at[security_index, "52-Week Change"] = \
-                    soup_stats.find_all("td", {"class": "Fz(s) Fw(500) Ta(end)"})[32].text.strip()
+                    df.at[security_index, "52-Week Change"] = soup_stats.find_all("td", {"class": "Fz(s) Fw(500) Ta(end)"})[32].text.strip()
                 else:
                     print("The 52-Week Change parameter at %s is not in the expected location." % url_stats)
             except IndexError:
@@ -89,21 +101,18 @@ for security_index in range(len(symbols_list)):
 
         # add Trailing P/E parameter
         if soup_stats.find_all("span", {"data-reactid": "29"})[1].text.strip() == "Trailing P/E":
-            df.at[security_index, "Trailing P/E"] = soup_stats.find_all("td", {"class": "Fz(s) Fw(500) Ta(end)"})[
-                2].text.strip()
+            df.at[security_index, "Trailing P/E"] = soup_stats.find_all("td", {"class": "Fz(s) Fw(500) Ta(end)"})[2].text.strip()
 
         # add Operating Margin parameter
         try:
             if soup_stats.find_all("span", {"data-reactid": "115"})[0].text.strip() == "Operating Margin":
-                df.at[security_index, "Operating Margin"] = \
-                soup_stats.find_all("td", {"class": "Fz(s) Fw(500) Ta(end)", "data-reactid": "119"})[0].text.strip()
+                df.at[security_index, "Operating Margin"] = soup_stats.find_all("td", {"class": "Fz(s) Fw(500) Ta(end)", "data-reactid": "119"})[0].text.strip()
             else:
                 print("The Operating Margin parameter at %s is not in the expected location." % url_stats)
         except IndexError:
             try:
                 if soup_stats.find_all("span", {"data-reactid": "116"})[0].text.strip() == "Operating Margin":
-                    df.at[security_index, "Operating Margin"] = \
-                    soup_stats.find_all("td", {"class": "Fz(s) Fw(500) Ta(end)", "data-reactid": "120"})[0].text.strip()
+                    df.at[security_index, "Operating Margin"] = soup_stats.find_all("td", {"class": "Fz(s) Fw(500) Ta(end)", "data-reactid": "120"})[0].text.strip()
                 else:
                     print("The Operating Margin parameter at %s is not in the expected location." % url_stats)
             except IndexError:
@@ -134,6 +143,8 @@ for security_index in range(len(symbols_list)):
                 print("The Beta (3Y Monthly) parameter at %s is not in the expected location." % url_stats)
         except IndexError:
             print("The Beta (3Y Monthly) parameter at %s is not in the expected location." % url_stats)
+
+        df.at[security_index, "YTD Return"] = "-"
 
     df.at[security_index, "Security"] = security_name  # assign name to dataframe
     df.at[security_index, "Type"] = security_type  # assign type to dataframe
