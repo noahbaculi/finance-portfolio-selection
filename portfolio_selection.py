@@ -10,7 +10,7 @@ symbols_list = ["KO", "SPY", "VTI", "MUB", "MSEGX", "DBA", "DIS", "V", "JPM", "M
 df = pd.DataFrame(columns=["Symbol", "Security", "Type", "Category", "Price"])
 pd.set_option("display.max_rows", 16)
 pd.set_option("display.max_columns", 12)
-pd.set_option("display.width", 300)
+pd.set_option("display.width", 200)
 
 df["Symbol"] = symbols_list
 
@@ -34,7 +34,7 @@ for security_index in range(len(symbols_list)):
                 if info_block[5].find("span", {"class": "Fl(start)"}).text.strip() == "Legal Type":
                     security_type = info_block[5].find("span", {"class": "Fl(end)"}).text.strip()
                 else:
-                    security_type = "Fund..?"
+                    security_type = "Fund"
             except:
                 raise SystemExit("An unknown error occured with the type of a fund security.")
             security_category = info_block[0].find("span", {"class": "Fl(end)"}).text.strip()
@@ -49,6 +49,7 @@ for security_index in range(len(symbols_list)):
             soup_risk = BeautifulSoup(page_risk.content, "html.parser")
             # print(soup_risk.prettify())  # to examine imported profile HTML
 
+            # add the Beta (3Y Monthly) parameter
             if soup_risk.find_all("span", {"data-reactid": "44"})[0].text.strip() == "Beta":
                 df.at[security_index, "Beta (3Y Monthly)"] = soup_risk.find_all("span", {"class": "W(39%) Fl(start)", "data-reactid": "46"})[0].text.strip()
             elif soup_risk.find_all("span", {"data-reactid": "74"})[0].text.strip() == "Beta":
@@ -56,12 +57,26 @@ for security_index in range(len(symbols_list)):
             else:
                 print("The Beta (3Y Monthly) parameter at %s is not in the expected location." % url_risk)
 
+            # add the YTD Return parameter
             if soup_profile.find_all("span", {"data-reactid": "43"})[0].text.strip() == "YTD Return":
                 df.at[security_index, "YTD Return"] = soup_profile.find_all("span", {"class": "Fl(end)", "data-reactid": "44"})[0].text.strip()
             elif soup_profile.find_all("span", {"data-reactid": "57"})[0].text.strip() == "YTD Return":
                 df.at[security_index, "YTD Return"] = soup_profile.find_all("span", {"class": "Fl(end)", "data-reactid": "58"})[0].text.strip()
             else:
                 print("The YTD Return parameter at %s is not in the expected location." % url_profile)
+
+            # add the Annual Report Expense Ratio parameter
+            try:
+                if soup_profile.find_all("span", {"class": "Mend(5px) Whs(nw)", "data-reactid": "68"})[0].find("span").text.strip() == "Annual Report Expense Ratio (net)":
+                    df.at[security_index, "Annual Expense Ratio"] = soup_profile.find_all("span", {"class": "W(20%) D(b) Fl(start) Ta(e)", "data-reactid": "70"})[0].text.strip()
+            except:
+                try:
+                    if soup_profile.find_all("span", {"class": "Mend(5px) Whs(nw)", "data-reactid": "113"})[0].find("span").text.strip() == "Annual Report Expense Ratio (net)":
+                        df.at[security_index, "Annual Expense Ratio"] = soup_profile.find_all("span", {"class": "W(20%) D(b) Fl(start) Ta(e)", "data-reactid": "115"})[0].text.strip()
+                    else:
+                        print("The Annual Report Expense Ratio parameter at %s is not in the expected location." % url_profile)
+                except:
+                    pass
 
             print("Success - Fund - %s" % symbols_list[security_index])
             print("Success - Fund Type - %s" % security_type)
@@ -145,6 +160,7 @@ for security_index in range(len(symbols_list)):
             print("The Beta (3Y Monthly) parameter at %s is not in the expected location." % url_stats)
 
         df.at[security_index, "YTD Return"] = "-"
+        df.at[security_index, "Annual Expense Ratio"] = "-"
 
     df.at[security_index, "Security"] = security_name  # assign name to dataframe
     df.at[security_index, "Type"] = security_type  # assign type to dataframe
